@@ -7,6 +7,7 @@ UBOOT_NXP_REL=imx_v2020.04_5.4.70_2.3.0
 #rel_imx_5.4.24_2.1.0
 #imx_v2020.04_5.4.24_2.1.0
 BUILDROOT_VERSION=2020.11.2
+BUILD_TYPE="ubuntu" # valid options: ubuntu | buildroot
 ###
 SHALLOW=${SHALLOW:false}
 if [ "x$SHALLOW" == "xtrue" ]; then
@@ -36,15 +37,6 @@ for i in $COMPONENTS; do
 	fi
 done
 
-if [[ ! -d $ROOTDIR/build/mfgtools ]]; then
-	cd $ROOTDIR/build
-	git clone https://github.com/NXPmicro/mfgtools.git -b uuu_1.4.77
-	cd mfgtools
-	git am ../../patches/mfgtools/*.patch
-	cmake .
-	make
-fi
-
 if [[ ! -d $ROOTDIR/build/firmware ]]; then
 	cd $ROOTDIR/build/
 	mkdir -p firmware
@@ -54,19 +46,29 @@ if [[ ! -d $ROOTDIR/build/firmware ]]; then
 	cp -v $(find . | awk '/train|hdmi_imx8|dp_imx8/' ORS=" ") ${ROOTDIR}/build/imx-mkimage/iMX8M/
 fi
 
-if [[ ! -d $ROOTDIR/build/buildroot ]]; then
-	cd $ROOTDIR/build
-	git clone ${SHALLOW_FLAG} https://github.com/buildroot/buildroot -b $BUILDROOT_VERSION
+if [[ $BUILD_TYPE == "buildroot" ]]; then
+	if [[ ! -d $ROOTDIR/build/buildroot ]]; then
+		cd $ROOTDIR/build
+		git clone ${SHALLOW_FLAG} https://github.com/buildroot/buildroot -b $BUILDROOT_VERSION
+	fi
+
+	# Build buildroot
+	echo "*** Building buildroot"
+	cd $ROOTDIR/build/buildroot
+	cp $ROOTDIR/configs/buildroot_defconfig configs/imx8mp_hummingboard_pulse_defconfig
+	make imx8mp_hummingboard_pulse_defconfig
+	make
+
+	export CROSS_COMPILE=$ROOTDIR/build/buildroot/output/host/bin/aarch64-linux-
+	ROOTFS_IMAGE=$ROOTDIR/build/buildroot/output/images/rootfs.ext2
+elif [[ $BUILD_TYPE == "ubuntu" ]]; then
+	#Build ubuntu rootfs
+	echo "*** Building ubuntu rootFS"
+	mkdir -p $ROOTDIR/build/ubuntu
+	bash $ROOTDIR/deboot.sh
+	export CROSS_COMPILE=aarch64-linux-gnu-
+	ROOTFS_IMAGE=$ROOTDIR/build/ubuntu/rootfs.ext2
 fi
-
-# Build buildroot
-echo "*** Building buildroot"
-cd $ROOTDIR/build/buildroot
-cp $ROOTDIR/configs/buildroot_defconfig configs/imx8mp_hummingboard_pulse_defconfig
-make imx8mp_hummingboard_pulse_defconfig
-make
-
-export CROSS_COMPILE=$ROOTDIR/build/buildroot/output/host/bin/aarch64-linux-
 
 # Build ATF
 echo "*** Building ATF"
@@ -89,7 +91,14 @@ echo "*** Building Linux kernel"
 cd $ROOTDIR/build/linux-imx
 make imx_v8_defconfig
 ./scripts/kconfig/merge_config.sh .config $ROOTDIR/configs/kernel.extra
-make -j32 Image dtbs
+make -j32 Image dtbs modules
+if [[ -d modules ]]; then
+	rm -R modules
+fi
+mkdir modules
+make modules_install INSTALL_MOD_PATH=./modules
+tar cvf modules.tar modules/
+rm -R modules
 
 # Bring bootlader all together
 echo "*** Creating boot loader image"
@@ -111,16 +120,21 @@ IMG=microsd-${REPO_PREFIX}.img
 echo "label linux" > $ROOTDIR/images/extlinux.conf
 echo "        linux ../Image" >> $ROOTDIR/images/extlinux.conf
 echo "        fdt ../imx8mp-hummingboard-pulse.dtb" >> $ROOTDIR/images/extlinux.conf
-echo "        initrd ../rootfs.cpio.uboot" >> $ROOTDIR/images/extlinux.conf
-#echo "        append root=/dev/mmcblk1p2 rootwait" >> $ROOTDIR/images/extlinux.conf
+if [[ $BUILD_TYPE == "buildroot" ]]; then
+	echo "        initrd ../rootfs.cpio.uboot" >> $ROOTDIR/images/extlinux.conf
+else
+	echo "        append root=/dev/mmcblk1p2 rootwait rw" >> $ROOTDIR/images/extlinux.conf
+fi
 mmd -i tmp/part1.fat32 ::/extlinux
 mcopy -i tmp/part1.fat32 $ROOTDIR/images/extlinux.conf ::/extlinux/extlinux.conf
 mcopy -i tmp/part1.fat32 $ROOTDIR/build/linux-imx/arch/arm64/boot/Image ::/Image
 mcopy -s -i tmp/part1.fat32 $ROOTDIR/build/linux-imx/arch/arm64/boot/dts/freescale/*imx8mp*.dtb ::/
-mcopy -s -i tmp/part1.fat32 $ROOTDIR/build/buildroot/output/images/rootfs.cpio.uboot ::/
-dd if=/dev/zero of=${IMG} bs=1M count=301
+if [[ $BUILD_TYPE == "buildroot" ]]; then
+	mcopy -s -i tmp/part1.fat32 $ROOTDIR/build/buildroot/output/images/rootfs.cpio.uboot ::/
+fi
+dd if=/dev/zero of=${IMG} bs=1M count=1501
 dd if=$ROOTDIR/build/imx-mkimage/iMX8M/flash.bin of=${IMG} bs=1K seek=32 conv=notrunc
-env PATH="$PATH:/sbin:/usr/sbin" parted --script ${IMG} mklabel msdos mkpart primary 2MiB 150MiB mkpart primary 150MiB 300MiB
+env PATH="$PATH:/sbin:/usr/sbin" parted --script ${IMG} mklabel msdos mkpart primary 2MiB 150MiB mkpart primary 150MiB 1500MiB
 dd if=tmp/part1.fat32 of=${IMG} bs=1M seek=2 conv=notrunc
-dd if=$ROOTDIR/build/buildroot/output/images/rootfs.ext2 of=${IMG} bs=1M seek=150 conv=notrunc
+dd if=${ROOTFS_IMAGE} of=${IMG} bs=1M seek=150 conv=notrunc
 echo -e "\n\n*** Image is ready - images/${IMG}"
