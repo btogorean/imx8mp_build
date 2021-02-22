@@ -66,8 +66,8 @@ function setup_config() {
   TZ_AREA=Etc
   TZ_CITY=UTC
   LOCALE_LANG=en_US.UTF-8
-  ADD_LIST='git build-essential gcc'
-  ADD_LIST_ST_3='i2c-tools v4l-utils rfkill wpasupplicant'
+  ADD_LIST='git build-essential gcc autoconf nano vim'
+  ADD_LIST_ST_3='i2c-tools v4l-utils rfkill wpasupplicant libtool libconfig-dev'
 
   # output example of the config file
 #  cat <<EOF>config-example
