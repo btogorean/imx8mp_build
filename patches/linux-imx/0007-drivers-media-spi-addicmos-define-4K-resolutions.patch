@@ -1,0 +1,67 @@
+From 6380ff52a2c6c1fa743c1ae86c283450600423c6 Mon Sep 17 00:00:00 2001
+From: Bogdan Togorean <bogdan.togorean@analog.com>
+Date: Tue, 2 Mar 2021 16:42:36 +0200
+Subject: [PATCH 1/2] drivers: media: spi: addicmos define 4K resolutions
+
+Signed-off-by: Bogdan Togorean <bogdan.togorean@analog.com>
+---
+ drivers/media/spi/addicmos.c | 15 ++++++++-------
+ 1 file changed, 8 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/media/spi/addicmos.c b/drivers/media/spi/addicmos.c
+index f4fed15f7b4d..3cbae48b8c7c 100644
+--- a/drivers/media/spi/addicmos.c
++++ b/drivers/media/spi/addicmos.c
+@@ -155,14 +155,14 @@ static const s64 link_freq_tbl[] = {
+ /* Elements of the structure must be ordered ascending by width & height */
+ static const struct addicmos_mode_info addicmos_mode_info_data[] = {
+ 	{
+-		.width = 32768,
+-		.height = 32,
++		.width = 4096,
++		.height = 256,
+ 		.pixel_rate = 488000000,
+ 		.link_freq_idx = 0 /* an index in link_freq_tbl[] */
+ 	},
+ 	{
+-		.width = 32768,
+-		.height = 48,
++		.width = 4096,
++		.height = 384,
+ 		.pixel_rate = 488000000,
+ 		.link_freq_idx = 1 /* an index in link_freq_tbl[] */
+ 	},
+@@ -272,6 +272,7 @@ static int addicmos_power_off(struct device *dev)
+ 		dev_err(addicmos->dev, "Could not set power down register\n");
+ 
+ 	for (i = 0; i < 5; i ++) {
++		msleep_interruptible(100);
+ 		regmap_read(addicmos->regmap, 0xC, &read_val);
+ 		if (read_val == 0x0) {
+ 			return 0;
+@@ -632,11 +633,11 @@ static int addicmos_spi_bus_init(struct v4l2_subdev *sd)
+ 	if (ret < 0)
+ 		return ret;
+ 
+-	gpiod_set_value_cansleep(addicmos->rst_gpio, 0);
++	gpiod_set_value_cansleep(addicmos->rst_gpio, 1);
+ 
+ 	msleep(500);
+ 
+-	gpiod_set_value_cansleep(addicmos->rst_gpio, 1);
++	gpiod_set_value_cansleep(addicmos->rst_gpio, 0);
+ 
+ 	/* Set SPI pins to SPI mode */
+ 	ret = pinctrl_select_state(addicmos->pinctrl, addicmos->pins_spi);
+@@ -739,7 +740,7 @@ pr_err("Entered addicmos_mode_firmware_load\n");
+ static int addicmos_probe(struct spi_device *client)
+ {
+ 	struct v4l2_fwnode_endpoint bus_cfg = {
+-		.bus_type = V4L2_MBUS_CSI2
++		.bus_type = V4L2_MBUS_CSI2_DPHY
+ 	};
+ 	struct device *dev = &client->dev;
+ 	struct fwnode_handle *endpoint;
+-- 
+2.17.1
+
