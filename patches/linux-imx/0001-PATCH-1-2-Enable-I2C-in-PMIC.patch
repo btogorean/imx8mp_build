@@ -1,7 +1,7 @@
-From 40a49485022bc47374adf37529bc4334cb828ae7 Mon Sep 17 00:00:00 2001
-From: TalPilo <tal.pilo@solid-run.com>
-Date: Sun, 4 Oct 2020 15:12:25 +0300
-Subject: [PATCH 1/2] Enable I2C in PMIC
+From 6e2a815fa13ba71f58d7418507af2c751090e97c Mon Sep 17 00:00:00 2001
+From: Bogdan Togorean <bogdan.togorean@analog.com>
+Date: Thu, 11 Mar 2021 11:06:51 +0200
+Subject: [PATCH 1/5] [PATCH 1/2] Enable I2C in PMIC
 
 Signed-off-by: TalPilo <tal.pilo@solid-run.com>
 ---
@@ -9,10 +9,10 @@ Signed-off-by: TalPilo <tal.pilo@solid-run.com>
  1 file changed, 8 insertions(+)
 
 diff --git a/drivers/mfd/pca9450.c b/drivers/mfd/pca9450.c
-index 85ce6e3eef68..30f5507a72e8 100644
+index 1586852ce52d..7d132afa4d95 100644
 --- a/drivers/mfd/pca9450.c
 +++ b/drivers/mfd/pca9450.c
-@@ -234,6 +234,13 @@ static int pca9450_i2c_probe(struct i2c_client *i2c,
+@@ -235,6 +235,13 @@ static int pca9450_i2c_probe(struct i2c_client *i2c,
  			__func__);
  		goto err;
  	}
@@ -26,7 +26,7 @@ index 85ce6e3eef68..30f5507a72e8 100644
  	dev_info(pca9450->dev, "Device ID=0x%X\n", ret);
  
  	pca9450_irq_init(pca9450, of_pmic_plat_data);
-@@ -293,6 +300,7 @@ static int __init pca9450_i2c_init(void)
+@@ -294,6 +301,7 @@ static int __init pca9450_i2c_init(void)
  /* init early so consumer devices can complete system boot */
  subsys_initcall(pca9450_i2c_init);
  
@@ -35,5 +35,5 @@ index 85ce6e3eef68..30f5507a72e8 100644
  {
  	i2c_del_driver(&pca9450_i2c_driver);
 -- 
-2.25.1
+2.17.1
 

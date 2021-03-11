@@ -1,0 +1,155 @@
+From 7eef611d92cab624385db2c7b810c75f89f2bc34 Mon Sep 17 00:00:00 2001
+From: Bogdan Togorean <bogdan.togorean@analog.com>
+Date: Thu, 11 Mar 2021 11:34:53 +0200
+Subject: [PATCH 4/5] Changes for ADI camera required on I.MX8M Mini capture
+ driver
+
+Signed-off-by: Bogdan Togorean <bogdan.togorean@analog.com>
+---
+ .../media/platform/mxc/capture/mx6s_capture.c | 34 +++++++++++++++++--
+ .../media/platform/mxc/capture/mxc_mipi_csi.c | 13 +++++++
+ 2 files changed, 44 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/media/platform/mxc/capture/mx6s_capture.c b/drivers/media/platform/mxc/capture/mx6s_capture.c
+index a45d01ed8bfd..4e66a69bcc2a 100644
+--- a/drivers/media/platform/mxc/capture/mx6s_capture.c
++++ b/drivers/media/platform/mxc/capture/mx6s_capture.c
+@@ -131,6 +131,7 @@
+ #define BIT_CSI_ENABLE			(0x1 << 31)
+ #define BIT_MIPI_DATA_FORMAT_RAW8		(0x2a << 25)
+ #define BIT_MIPI_DATA_FORMAT_RAW10		(0x2b << 25)
++#define BIT_MIPI_DATA_FORMAT_RAW12		(0x2c << 25)
+ #define BIT_MIPI_DATA_FORMAT_YUV422_8B	(0x1e << 25)
+ #define BIT_MIPI_DATA_FORMAT_MASK	(0x3F << 25)
+ #define BIT_MIPI_DATA_FORMAT_OFFSET	25
+@@ -266,6 +267,12 @@ static struct mx6s_fmt formats[] = {
+ 		.pixelformat	= V4L2_PIX_FMT_SBGGR8,
+ 		.mbus_code	= MEDIA_BUS_FMT_SBGGR8_1X8,
+ 		.bpp		= 1,
++	}, {
++		.name		= "RAWRGB12 (SBGGR12)",
++		.fourcc		= V4L2_PIX_FMT_SBGGR12,
++		.pixelformat	= V4L2_PIX_FMT_SBGGR12,
++		.mbus_code	= MEDIA_BUS_FMT_SBGGR12_1X12,
++		.bpp		= 2,
+ 	}
+ };
+ 
+@@ -750,6 +757,8 @@ static int mx6s_csi_enable(struct mx6s_csi_dev *csi_dev)
+ 
+ 	if (pix->field == V4L2_FIELD_INTERLACED)
+ 		csi_tvdec_enable(csi_dev, true);
++	else
++		csi_tvdec_enable(csi_dev, false);
+ 
+ 	/* For mipi csi input only */
+ 	if (csi_dev->csi_mipi_mode == true) {
+@@ -838,6 +847,7 @@ static int mx6s_configure_csi(struct mx6s_csi_dev *csi_dev)
+ 	switch (csi_dev->fmt->pixelformat) {
+ 	case V4L2_PIX_FMT_YUV32:
+ 	case V4L2_PIX_FMT_SBGGR8:
++	case V4L2_PIX_FMT_SBGGR12:
+ 		width = pix->width;
+ 		break;
+ 	case V4L2_PIX_FMT_UYVY:
+@@ -871,6 +881,9 @@ static int mx6s_configure_csi(struct mx6s_csi_dev *csi_dev)
+ 		case V4L2_PIX_FMT_SBGGR8:
+ 			cr18 |= BIT_MIPI_DATA_FORMAT_RAW8;
+ 			break;
++		case V4L2_PIX_FMT_SBGGR12:
++			cr18 |= BIT_MIPI_DATA_FORMAT_RAW12;
++			break;
+ 		default:
+ 			pr_debug("   fmt not supported\n");
+ 			return -EINVAL;
+@@ -1456,6 +1469,7 @@ static int mx6s_vidioc_s_fmt_vid_cap(struct file *file, void *priv,
+ 	csi_dev->pix.width     = f->fmt.pix.width;
+ 	csi_dev->pix.height    = f->fmt.pix.height;
+ 	csi_dev->pix.sizeimage = f->fmt.pix.sizeimage;
++	csi_dev->pix.bytesperline = f->fmt.pix.bytesperline;
+ 	csi_dev->pix.field     = f->fmt.pix.field;
+ 	csi_dev->type          = f->type;
+ 	dev_dbg(csi_dev->dev, "set to pixelformat '%4.6s'\n",
+@@ -1617,8 +1631,15 @@ static int mx6s_vidioc_enum_framesizes(struct file *file, void *priv,
+ 	int ret;
+ 
+ 	fmt = format_by_fourcc(fsize->pixel_format);
+-	if (fmt->pixelformat != fsize->pixel_format)
++	if (!fmt) {
++		dev_err(csi_dev->dev, "Fourcc format (0x%08x) invalid.",
++			fsize->pixel_format);
+ 		return -EINVAL;
++	} else {
++		if (fmt->pixelformat != fsize->pixel_format)
++			return -EINVAL;
++	}
++
+ 	fse.code = fmt->mbus_code;
+ 
+ 	ret = v4l2_subdev_call(sd, pad, enum_frame_size, NULL, &fse);
+@@ -1659,8 +1680,15 @@ static int mx6s_vidioc_enum_frameintervals(struct file *file, void *priv,
+ 	int ret;
+ 
+ 	fmt = format_by_fourcc(interval->pixel_format);
+-	if (fmt->pixelformat != interval->pixel_format)
+-		return -EINVAL;
++	if (!fmt) {
++		dev_err(csi_dev->dev, "Fourcc format (0x%08x) invalid.",
++			interval->pixel_format);
++		 return -EINVAL;
++	} else {
++		if (fmt->pixelformat != interval->pixel_format)
++			return -EINVAL;
++	}
++
+ 	fie.code = fmt->mbus_code;
+ 
+ 	ret = v4l2_subdev_call(sd, pad, enum_frame_interval, NULL, &fie);
+diff --git a/drivers/media/platform/mxc/capture/mxc_mipi_csi.c b/drivers/media/platform/mxc/capture/mxc_mipi_csi.c
+index 069a0b9bb961..70c18d758660 100644
+--- a/drivers/media/platform/mxc/capture/mxc_mipi_csi.c
++++ b/drivers/media/platform/mxc/capture/mxc_mipi_csi.c
+@@ -322,6 +322,10 @@ static const struct csis_pix_format mipi_csis_formats[] = {
+ 		.code = MEDIA_BUS_FMT_SBGGR8_1X8,
+ 		.fmt_reg = MIPI_CSIS_ISPCFG_FMT_RAW8,
+ 		.data_alignment = 8,
++	}, {
++		.code = MEDIA_BUS_FMT_SBGGR12_1X12,
++		.fmt_reg = MIPI_CSIS_ISPCFG_FMT_RAW12,
++		.data_alignment = 16,
+ 	}
+ };
+ 
+@@ -509,6 +513,7 @@ static void mipi_csis_set_params(struct csi_state *state)
+ 		val |= MIPI_CSIS_ISPCFG_ALIGN_32BIT;
+ 	else /* Normal output */
+ 		val &= ~MIPI_CSIS_ISPCFG_ALIGN_32BIT;
++	val |= MIPI_CSIS_ISPCFG_DOUBLE_CMPNT;
+ 	mipi_csis_write(state, MIPI_CSIS_ISPCONFIG_CH0, val);
+ 
+ 	val = (0 << MIPI_CSIS_ISPSYNC_HSYNC_LINTV_OFFSET) |
+@@ -942,6 +947,13 @@ static int subdev_notifier_bound(struct v4l2_async_notifier *notifier,
+ 	return 0;
+ }
+ 
++static int subdev_notifier_complete(struct v4l2_async_notifier *notifier)
++{
++	struct csi_state *state = notifier_to_mipi_dev(notifier);
++
++	return v4l2_device_register_subdev_nodes(&state->v4l2_dev);
++}
++
+ static int mipi_csis_parse_dt(struct platform_device *pdev,
+ 			    struct csi_state *state)
+ {
+@@ -982,6 +994,7 @@ static const struct of_device_id mipi_csis_of_match[];
+ 
+ static const struct v4l2_async_notifier_operations mxc_mipi_csi_subdev_ops = {
+ 	.bound = subdev_notifier_bound,
++	.complete = subdev_notifier_complete,
+ };
+ 
+ /* register parent dev */
+-- 
+2.17.1
+
