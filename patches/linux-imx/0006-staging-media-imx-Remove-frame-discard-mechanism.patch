@@ -1,0 +1,180 @@
+From a0468a702c79f1ef8a5fc07eb29273804708ff72 Mon Sep 17 00:00:00 2001
+From: Bogdan Togorean <bogdan.togorean@analog.com>
+Date: Tue, 23 Mar 2021 13:38:04 +0200
+Subject: [PATCH] staging: media: imx: Remove frame discard mechanism
+
+Signed-off-by: Bogdan Togorean <bogdan.togorean@analog.com>
+---
+ drivers/staging/media/imx/imx8-isi-cap.c | 73 +++++-------------------
+ drivers/staging/media/imx/imx8-isi-hw.c  | 31 ++++------
+ 2 files changed, 23 insertions(+), 81 deletions(-)
+
+diff --git a/drivers/staging/media/imx/imx8-isi-cap.c b/drivers/staging/media/imx/imx8-isi-cap.c
+index 2b2d73a5e1ca..7102a11835e9 100644
+--- a/drivers/staging/media/imx/imx8-isi-cap.c
++++ b/drivers/staging/media/imx/imx8-isi-cap.c
+@@ -294,30 +294,16 @@ void mxc_isi_cap_frame_write_done(struct mxc_isi_dev *mxc_isi)
+ 		return;
+ 	}
+ 
+-	if (buf->discard) {
+-		list_move_tail(isi_cap->out_active.next, &isi_cap->out_discard);
+-	} else {
+-		vb2 = &buf->v4l2_buf.vb2_buf;
+-		list_del_init(&buf->list);
+-		buf->v4l2_buf.vb2_buf.timestamp = ktime_get_ns();
+-		vb2_buffer_done(&buf->v4l2_buf.vb2_buf, VB2_BUF_STATE_DONE);
+-	}
+-
+-	isi_cap->frame_count++;
+-
+-	if (list_empty(&isi_cap->out_pending)) {
+-		if (list_empty(&isi_cap->out_discard)) {
+-			dev_warn(dev, "trying to access empty discard list\n");
+-			return;
+-		}
++	vb2 = &buf->v4l2_buf.vb2_buf;
++	list_del_init(&buf->list);
++	buf->v4l2_buf.vb2_buf.timestamp = ktime_get_ns();
++	vb2_buffer_done(&buf->v4l2_buf.vb2_buf, VB2_BUF_STATE_DONE);
+ 
+-		buf = list_first_entry(&isi_cap->out_discard,
+-				       struct mxc_isi_buffer, list);
+-		buf->v4l2_buf.sequence = isi_cap->frame_count;
+-		mxc_isi_channel_set_outbuf(mxc_isi, buf);
+-		list_move_tail(isi_cap->out_discard.next, &isi_cap->out_active);
++	/* Special case for last active frame */
++	if (list_empty(&isi_cap->out_pending))
+ 		return;
+-	}
++
++	isi_cap->frame_count++;
+ 
+ 	/* ISI channel output buffer */
+ 	buf = list_first_entry(&isi_cap->out_pending, struct mxc_isi_buffer, list);
+@@ -424,59 +410,26 @@ static int cap_vb2_start_streaming(struct vb2_queue *q, unsigned int count)
+ 	if (!mxc_isi)
+ 		return -EINVAL;
+ 
+-	/* Create a buffer for discard operation */
+-	for (i = 0; i < isi_cap->pix.num_planes; i++) {
+-		isi_cap->discard_size[i] = isi_cap->dst_f.sizeimage[i];
+-		isi_cap->discard_buffer[i] =
+-			dma_alloc_coherent(&isi_cap->pdev->dev,
+-					   PAGE_ALIGN(isi_cap->discard_size[i]),
+-					   &isi_cap->discard_buffer_dma[i],
+-					   GFP_DMA | GFP_KERNEL);
+-		if (!isi_cap->discard_buffer[i]) {
+-			for (j = 0; j < i; j++) {
+-				dma_free_coherent(&isi_cap->pdev->dev,
+-						  PAGE_ALIGN(isi_cap->discard_size[j]),
+-						  isi_cap->discard_buffer[j],
+-						  isi_cap->discard_buffer_dma[j]);
+-				dev_err(&isi_cap->pdev->dev,
+-					"alloc dma buffer(%d) fail\n", j);
+-			}
+-			return -ENOMEM;
+-		}
+-		dev_dbg(&isi_cap->pdev->dev,
+-			"%s: num_plane=%d discard_size=%d discard_buffer=%p\n"
+-			, __func__, i,
+-			PAGE_ALIGN((int)isi_cap->discard_size[i]),
+-			isi_cap->discard_buffer[i]);
+-	}
+-
+ 	spin_lock_irqsave(&isi_cap->slock, flags);
+ 
+-	/* add two list member to out_discard list head */
+-	isi_cap->buf_discard[0].discard = true;
+-	list_add_tail(&isi_cap->buf_discard[0].list, &isi_cap->out_discard);
+-
+-	isi_cap->buf_discard[1].discard = true;
+-	list_add_tail(&isi_cap->buf_discard[1].list, &isi_cap->out_discard);
+-
+ 	/* ISI channel output buffer 1 */
+-	buf = list_first_entry(&isi_cap->out_discard, struct mxc_isi_buffer, list);
+-	buf->v4l2_buf.sequence = 0;
++	buf = list_first_entry(&isi_cap->out_pending, struct mxc_isi_buffer, list);
++	buf->v4l2_buf.sequence = 1;
+ 	vb2 = &buf->v4l2_buf.vb2_buf;
+ 	vb2->state = VB2_BUF_STATE_ACTIVE;
+ 	mxc_isi_channel_set_outbuf(mxc_isi, buf);
+-	list_move_tail(isi_cap->out_discard.next, &isi_cap->out_active);
++	list_move_tail(isi_cap->out_pending.next, &isi_cap->out_active);
+ 
+ 	/* ISI channel output buffer 2 */
+ 	buf = list_first_entry(&isi_cap->out_pending, struct mxc_isi_buffer, list);
+-	buf->v4l2_buf.sequence = 1;
++	buf->v4l2_buf.sequence = 2;
+ 	vb2 = &buf->v4l2_buf.vb2_buf;
+ 	vb2->state = VB2_BUF_STATE_ACTIVE;
+ 	mxc_isi_channel_set_outbuf(mxc_isi, buf);
+ 	list_move_tail(isi_cap->out_pending.next, &isi_cap->out_active);
+ 
+ 	/* Clear frame count */
+-	isi_cap->frame_count = 1;
++	isi_cap->frame_count = 2;
+ 	spin_unlock_irqrestore(&isi_cap->slock, flags);
+ 
+ 	return 0;
+diff --git a/drivers/staging/media/imx/imx8-isi-hw.c b/drivers/staging/media/imx/imx8-isi-hw.c
+index f8e804483a48..0516d4eb9907 100644
+--- a/drivers/staging/media/imx/imx8-isi-hw.c
++++ b/drivers/staging/media/imx/imx8-isi-hw.c
+@@ -211,36 +211,23 @@ void mxc_isi_channel_set_outbuf(struct mxc_isi_dev *mxc_isi,
+ 	struct v4l2_pix_format_mplane *pix;
+ 	int val = 0;
+ 
+-	if (buf->discard) {
+-		isi_cap = mxc_isi->isi_cap;
+-		pix = &isi_cap->pix;
+-		paddr->y = isi_cap->discard_buffer_dma[0];
+-		if (pix->num_planes == 2)
+-			paddr->cb = isi_cap->discard_buffer_dma[1];
+-		if (pix->num_planes == 3) {
+-			paddr->cb = isi_cap->discard_buffer_dma[1];
+-			paddr->cr = isi_cap->discard_buffer_dma[2];
+-		}
+-	} else {
+-		paddr->y = vb2_dma_contig_plane_dma_addr(vb2_buf, 0);
++	paddr->y = vb2_dma_contig_plane_dma_addr(vb2_buf, 0);
+ 
+-		if (vb2_buf->num_planes == 2)
+-			paddr->cb = vb2_dma_contig_plane_dma_addr(vb2_buf, 1);
+-		if (vb2_buf->num_planes == 3) {
+-			paddr->cb = vb2_dma_contig_plane_dma_addr(vb2_buf, 1);
+-			paddr->cr = vb2_dma_contig_plane_dma_addr(vb2_buf, 2);
+-		}
++	if (vb2_buf->num_planes == 2)
++		paddr->cb = vb2_dma_contig_plane_dma_addr(vb2_buf, 1);
++	if (vb2_buf->num_planes == 3) {
++		paddr->cb = vb2_dma_contig_plane_dma_addr(vb2_buf, 1);
++		paddr->cr = vb2_dma_contig_plane_dma_addr(vb2_buf, 2);
+ 	}
+ 
+ 	val = readl(mxc_isi->regs + CHNL_OUT_BUF_CTRL);
+-
+-	if (framecount == 0 || ((is_buf_active(mxc_isi, 2)) && (framecount != 1))) {
++	if (framecount == 1 || ((is_buf_active(mxc_isi, 2)) && (framecount != 2))) {
+ 		writel(paddr->y, mxc_isi->regs + CHNL_OUT_BUF1_ADDR_Y);
+ 		writel(paddr->cb, mxc_isi->regs + CHNL_OUT_BUF1_ADDR_U);
+ 		writel(paddr->cr, mxc_isi->regs + CHNL_OUT_BUF1_ADDR_V);
+ 		val ^= CHNL_OUT_BUF_CTRL_LOAD_BUF1_ADDR_MASK;
+ 		buf->id = MXC_ISI_BUF1;
+-	} else if (framecount == 1 || is_buf_active(mxc_isi, 1)) {
++	} else if (framecount == 2 || is_buf_active(mxc_isi, 1)) {
+ 		writel(paddr->y, mxc_isi->regs + CHNL_OUT_BUF2_ADDR_Y);
+ 		writel(paddr->cb, mxc_isi->regs + CHNL_OUT_BUF2_ADDR_U);
+ 		writel(paddr->cr, mxc_isi->regs + CHNL_OUT_BUF2_ADDR_V);
+@@ -248,6 +235,8 @@ void mxc_isi_channel_set_outbuf(struct mxc_isi_dev *mxc_isi,
+ 		buf->id = MXC_ISI_BUF2;
+ 	}
+ 	writel(val, mxc_isi->regs + CHNL_OUT_BUF_CTRL);
++	dev_dbg(&mxc_isi->pdev->dev, "DMA address: y: %pad  cb: %pad cr: %pad id: %d\n",
++		 &paddr->y, &paddr->cb, &paddr->cr, buf->id);
+ }
+ EXPORT_SYMBOL_GPL(mxc_isi_channel_set_outbuf);
+ 
+-- 
+2.17.1
+
