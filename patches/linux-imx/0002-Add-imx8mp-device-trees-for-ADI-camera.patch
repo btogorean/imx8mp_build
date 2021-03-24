@@ -1,7 +1,7 @@
-From 061de24d21f0717bcbc99d02d121a47c495ae13a Mon Sep 17 00:00:00 2001
+From 448703765d3c2d954a2f3d7e6ce6e90d13e6fb8e Mon Sep 17 00:00:00 2001
 From: Bogdan Togorean <bogdan.togorean@analog.com>
 Date: Thu, 11 Mar 2021 11:24:59 +0200
-Subject: [PATCH 2/5] Add imx8mp device trees for ADI camera
+Subject: [PATCH 2/6] Add imx8mp device trees for ADI camera
 
 Signed-off-by: Bogdan Togorean <bogdan.togorean@analog.com>
 ---

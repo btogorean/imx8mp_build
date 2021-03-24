@@ -1,7 +1,7 @@
-From a0468a702c79f1ef8a5fc07eb29273804708ff72 Mon Sep 17 00:00:00 2001
+From 14608c4f0aac12afff9e69c51a1b0775abee1ef1 Mon Sep 17 00:00:00 2001
 From: Bogdan Togorean <bogdan.togorean@analog.com>
 Date: Tue, 23 Mar 2021 13:38:04 +0200
-Subject: [PATCH] staging: media: imx: Remove frame discard mechanism
+Subject: [PATCH 6/6] staging: media: imx: Remove frame discard mechanism
 
 Signed-off-by: Bogdan Togorean <bogdan.togorean@analog.com>
 ---

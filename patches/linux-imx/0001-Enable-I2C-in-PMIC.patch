@@ -1,7 +1,7 @@
-From 6e2a815fa13ba71f58d7418507af2c751090e97c Mon Sep 17 00:00:00 2001
+From 0fff9d9b04edc3980e6d8ebeec3606d396acf53f Mon Sep 17 00:00:00 2001
 From: Bogdan Togorean <bogdan.togorean@analog.com>
 Date: Thu, 11 Mar 2021 11:06:51 +0200
-Subject: [PATCH 1/5] [PATCH 1/2] Enable I2C in PMIC
+Subject: [PATCH 1/6] Enable I2C in PMIC
 
 Signed-off-by: TalPilo <tal.pilo@solid-run.com>
 ---

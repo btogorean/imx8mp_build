@@ -1,7 +1,7 @@
-From 7eef611d92cab624385db2c7b810c75f89f2bc34 Mon Sep 17 00:00:00 2001
+From 4d8ee4c8ff723dcaa2e5b031479bac22cde5a878 Mon Sep 17 00:00:00 2001
 From: Bogdan Togorean <bogdan.togorean@analog.com>
 Date: Thu, 11 Mar 2021 11:34:53 +0200
-Subject: [PATCH 4/5] Changes for ADI camera required on I.MX8M Mini capture
+Subject: [PATCH 4/6] Changes for ADI camera required on I.MX8M Mini capture
  driver
 
 Signed-off-by: Bogdan Togorean <bogdan.togorean@analog.com>
