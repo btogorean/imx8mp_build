@@ -1,4 +1,4 @@
-From 448703765d3c2d954a2f3d7e6ce6e90d13e6fb8e Mon Sep 17 00:00:00 2001
+From 6e1b31ba15eafcc66151a28b4f287cbbb993e696 Mon Sep 17 00:00:00 2001
 From: Bogdan Togorean <bogdan.togorean@analog.com>
 Date: Thu, 11 Mar 2021 11:24:59 +0200
 Subject: [PATCH 2/6] Add imx8mp device trees for ADI camera
@@ -29,7 +29,7 @@ index 27d3bbdc6748..a56fce9cc942 100644
  			  imx8mp-evk-dsp.dtb imx8mp-evk-ov2775.dtb imx8mp-evk-basler.dtb imx8mp-evk-pcie-ep.dtb \
 diff --git a/arch/arm64/boot/dts/freescale/imx8mp-adi-tof-noreg.dts b/arch/arm64/boot/dts/freescale/imx8mp-adi-tof-noreg.dts
 new file mode 100644
-index 000000000000..e4bb49ef7eeb
+index 000000000000..3b2fce248008
 --- /dev/null
 +++ b/arch/arm64/boot/dts/freescale/imx8mp-adi-tof-noreg.dts
 @@ -0,0 +1,1223 @@
@@ -238,7 +238,7 @@ index 000000000000..e4bb49ef7eeb
 +		compatible = "nxp,cbtl04gp";
 +		pinctrl-names = "default";
 +		pinctrl-0 = <&pinctrl_typec_mux>;
-+		switch-gpios = <&gpio1 13 GPIO_ACTIVE_HIGH>;
++		switch-gpios = <&gpio1 13 GPIO_ACTIVE_LOW>;
 +		orientation-switch;
 +
 +		port {
@@ -1258,7 +1258,7 @@ index 000000000000..e4bb49ef7eeb
 +};
 diff --git a/arch/arm64/boot/dts/freescale/imx8mp-adi-tof.dts b/arch/arm64/boot/dts/freescale/imx8mp-adi-tof.dts
 new file mode 100644
-index 000000000000..1bd595fe27ad
+index 000000000000..57110f991ae3
 --- /dev/null
 +++ b/arch/arm64/boot/dts/freescale/imx8mp-adi-tof.dts
 @@ -0,0 +1,1226 @@
@@ -1466,7 +1466,7 @@ index 000000000000..1bd595fe27ad
 +		compatible = "nxp,cbtl04gp";
 +		pinctrl-names = "default";
 +		pinctrl-0 = <&pinctrl_typec_mux>;
-+		switch-gpios = <&gpio1 13 GPIO_ACTIVE_HIGH>;
++		switch-gpios = <&gpio1 13 GPIO_ACTIVE_LOW>;
 +		orientation-switch;
 +
 +		port {
