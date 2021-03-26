@@ -67,7 +67,7 @@ function setup_config() {
   TZ_CITY=UTC
   LOCALE_LANG=en_US.UTF-8
   ADD_LIST='git build-essential gcc autoconf nano vim'
-  ADD_LIST_ST_3='i2c-tools v4l-utils rfkill wpasupplicant libtool libconfig-dev'
+  ADD_LIST_ST_3='i2c-tools v4l-utils rfkill wpasupplicant libtool libconfig-dev avahi-daemon'
 
   # output example of the config file
 #  cat <<EOF>config-example
@@ -203,7 +203,7 @@ dpkg-reconfigure -f noninteractive tzdata
 rm -f /tmp/tmptz
 
 # set default hostname
-echo localhost > /etc/hostname
+echo aditof > /etc/hostname
 
 # create user and passwd
 useradd -m -d /home/${USERNAME} -s /bin/bash ${USERNAME}
@@ -224,7 +224,15 @@ apt upgrade -y
 
 apt install -y ${ADD_LIST_ST_3}
 
+#systemd configs
+systemctl enable systemd-networkd.service
+systemctl enable avahi-daemon.service
+systemctl enable usb-gadget.service
+
 EOF
+
+  # Apply step1 overlay
+  sudo cp -R ${SCRIPT_DIR}/patches/ubuntu_overlay/step1/* ${ROOTFS_TMP}/
 
   sudo mv stage3.sh ${ROOTFS_TMP}/tmp
   sudo chmod +x ${ROOTFS_TMP}/tmp/stage3.sh
@@ -233,6 +241,9 @@ EOF
 
   # I don't know who creates empty .cache which is owned by root, remove it.
   sudo rm -rf ${ROOTFS_TMP}/home/${USERNAME}/.cache
+
+  # Apply step3 overlay (configs)
+  sudo cp -R ${SCRIPT_DIR}/patches/ubuntu_overlay/step3/* ${ROOTFS_TMP}/
 }
 
 function main() {
