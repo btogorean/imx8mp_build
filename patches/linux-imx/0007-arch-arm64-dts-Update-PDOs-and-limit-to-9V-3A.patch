@@ -1,0 +1,52 @@
+From bb8de526fddbe84592cd2315492096bd30ec0898 Mon Sep 17 00:00:00 2001
+From: Bogdan Togorean <bogdan.togorean@analog.com>
+Date: Fri, 26 Mar 2021 15:10:37 +0200
+Subject: [PATCH 7/7] arch: arm64: dts: Update PDOs and limit to 9V 3A
+
+Signed-off-by: Bogdan Togorean <bogdan.togorean@analog.com>
+---
+ arch/arm64/boot/dts/freescale/imx8mp-adi-tof-noreg.dts | 6 ++----
+ arch/arm64/boot/dts/freescale/imx8mp-adi-tof.dts       | 6 ++----
+ 2 files changed, 4 insertions(+), 8 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/freescale/imx8mp-adi-tof-noreg.dts b/arch/arm64/boot/dts/freescale/imx8mp-adi-tof-noreg.dts
+index 3b2fce248008..ad44a81ba0e5 100644
+--- a/arch/arm64/boot/dts/freescale/imx8mp-adi-tof-noreg.dts
++++ b/arch/arm64/boot/dts/freescale/imx8mp-adi-tof-noreg.dts
+@@ -512,12 +512,10 @@
+ 		usb_con: connector {
+ 			compatible = "usb-c-connector";
+ 			label = "USB-C";
+-			power-role = "dual";
++			power-role = "sink";
+ 			data-role = "dual";
+-			try-power-role = "sink";
+-			source-pdos = <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)>;
+ 			sink-pdos = <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)
+-				     PDO_VAR(5000, 20000, 3000)>;
++						 PDO_VAR(5000, 12000, 3000)>;
+ 			op-sink-microwatt = <15000000>;
+ 
+ 			ports {
+diff --git a/arch/arm64/boot/dts/freescale/imx8mp-adi-tof.dts b/arch/arm64/boot/dts/freescale/imx8mp-adi-tof.dts
+index 57110f991ae3..5f4460db29d3 100644
+--- a/arch/arm64/boot/dts/freescale/imx8mp-adi-tof.dts
++++ b/arch/arm64/boot/dts/freescale/imx8mp-adi-tof.dts
+@@ -511,12 +511,10 @@
+ 		usb_con: connector {
+ 			compatible = "usb-c-connector";
+ 			label = "USB-C";
+-			power-role = "dual";
++			power-role = "sink";
+ 			data-role = "dual";
+-			try-power-role = "sink";
+-			source-pdos = <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)>;
+ 			sink-pdos = <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)
+-				     PDO_VAR(5000, 20000, 3000)>;
++				     PDO_VAR(5000, 12000, 3000)>;
+ 			op-sink-microwatt = <15000000>;
+ 
+ 			ports {
+-- 
+2.17.1
+
