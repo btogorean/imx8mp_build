@@ -3,6 +3,8 @@ set -e
 
 ### General setup
 NXP_REL=rel_imx_5.4.70_2.3.0
+KERNEL_NXP_REL=lf-5.10.y
+#rel_imx_5.4.70_2.3.0
 UBOOT_NXP_REL=imx_v2020.04_5.4.70_2.3.0
 #rel_imx_5.4.24_2.1.0
 #imx_v2020.04_5.4.24_2.1.0
@@ -26,6 +28,8 @@ for i in $COMPONENTS; do
 		cd $ROOTDIR/build/
 		if [ "x$i" == "xuboot-imx" ]; then
 			CHECKOUT=$UBOOT_NXP_REL
+		elif [ "x$i" == "xlinux-imx" ]; then
+			CHECKOUT=$KERNEL_NXP_REL
 		else
 			CHECKOUT=$NXP_REL
 		fi

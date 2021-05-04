@@ -1,7 +1,7 @@
-From 75ede0e994d04119f3aac34be97aca0bfb4b0866 Mon Sep 17 00:00:00 2001
+From fd63be0e5547ba930e3abb7b850878ff62994641 Mon Sep 17 00:00:00 2001
 From: Bogdan Togorean <bogdan.togorean@analog.com>
 Date: Thu, 11 Mar 2021 11:35:17 +0200
-Subject: [PATCH 5/6] Changes for ADI camera required on I.MX8M Plus capture
+Subject: [PATCH 3/7] Changes for ADI camera required on I.MX8M Plus capture
  driver
 
 Signed-off-by: Bogdan Togorean <bogdan.togorean@analog.com>
@@ -12,10 +12,10 @@ Signed-off-by: Bogdan Togorean <bogdan.togorean@analog.com>
  3 files changed, 22 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/staging/media/imx/imx8-isi-cap.c b/drivers/staging/media/imx/imx8-isi-cap.c
-index 6ba5b3a86f49..2b2d73a5e1ca 100644
+index 0ec74b760397..85b7713b67e9 100644
 --- a/drivers/staging/media/imx/imx8-isi-cap.c
 +++ b/drivers/staging/media/imx/imx8-isi-cap.c
-@@ -105,6 +105,14 @@ struct mxc_isi_fmt mxc_isi_out_formats[] = {
+@@ -107,6 +107,14 @@ struct mxc_isi_fmt mxc_isi_out_formats[] = {
  		.memplanes	= 1,
  		.colplanes	= 1,
  		.mbus_code	= MEDIA_BUS_FMT_RGB888_1X24,
@@ -30,7 +30,7 @@ index 6ba5b3a86f49..2b2d73a5e1ca 100644
  	}
  };
  
-@@ -124,6 +132,12 @@ struct mxc_isi_fmt mxc_isi_src_formats[] = {
+@@ -126,6 +134,12 @@ struct mxc_isi_fmt mxc_isi_src_formats[] = {
  		.depth		= { 32 },
  		.memplanes	= 1,
  		.colplanes	= 1,
@@ -43,7 +43,7 @@ index 6ba5b3a86f49..2b2d73a5e1ca 100644
  	}
  };
  
-@@ -169,6 +183,8 @@ struct mxc_isi_fmt *mxc_isi_get_src_fmt(struct v4l2_subdev_format *sd_fmt)
+@@ -171,6 +185,8 @@ struct mxc_isi_fmt *mxc_isi_get_src_fmt(struct v4l2_subdev_format *sd_fmt)
  	    sd_fmt->format.code == MEDIA_BUS_FMT_UYVY8_2X8 ||
  	    sd_fmt->format.code == MEDIA_BUS_FMT_YUYV8_2X8)
  		index = 1;
@@ -52,7 +52,7 @@ index 6ba5b3a86f49..2b2d73a5e1ca 100644
  	else
  		index = 0;
  	return &mxc_isi_src_formats[index];
-@@ -721,7 +737,7 @@ static int mxc_isi_capture_open(struct file *file)
+@@ -727,7 +743,7 @@ static int mxc_isi_capture_open(struct file *file)
  	pm_runtime_get_sync(dev);
  
  	ret = v4l2_subdev_call(sd, core, s_power, 1);
@@ -62,10 +62,10 @@ index 6ba5b3a86f49..2b2d73a5e1ca 100644
  		pm_runtime_put(dev);
  		return ret;
 diff --git a/drivers/staging/media/imx/imx8-media-dev.c b/drivers/staging/media/imx/imx8-media-dev.c
-index 875c9e92d531..fb2b026226c5 100644
+index a9705b6f9cf3..284924ff2549 100644
 --- a/drivers/staging/media/imx/imx8-media-dev.c
 +++ b/drivers/staging/media/imx/imx8-media-dev.c
-@@ -883,7 +883,7 @@ static int register_sensor_entities(struct mxc_md *mxc_md)
+@@ -953,7 +953,7 @@ static int register_sensor_entities(struct mxc_md *mxc_md)
  	struct device_node *parent = mxc_md->pdev->dev.of_node;
  	struct device_node *node, *ep, *rem;
  	struct v4l2_fwnode_endpoint endpoint;
@@ -74,7 +74,7 @@ index 875c9e92d531..fb2b026226c5 100644
  	int index = 0;
  	int ret;
  
-@@ -936,10 +936,10 @@ static int register_sensor_entities(struct mxc_md *mxc_md)
+@@ -1016,10 +1016,10 @@ static int register_sensor_entities(struct mxc_md *mxc_md)
  		/*
  		 * Need to wait sensor driver probed for the first time
  		 */
@@ -88,10 +88,10 @@ index 875c9e92d531..fb2b026226c5 100644
  			return -EPROBE_DEFER;
  		}
 diff --git a/drivers/staging/media/imx/imx8-mipi-csi2-sam.c b/drivers/staging/media/imx/imx8-mipi-csi2-sam.c
-index 4d4896779753..2743fa685c3d 100644
+index 6bfd01315b85..a8d323625fd8 100644
 --- a/drivers/staging/media/imx/imx8-mipi-csi2-sam.c
 +++ b/drivers/staging/media/imx/imx8-mipi-csi2-sam.c
-@@ -1082,7 +1082,9 @@ static int mipi_csis_set_fmt(struct v4l2_subdev *mipi_sd,
+@@ -1129,7 +1129,9 @@ static int mipi_csis_set_fmt(struct v4l2_subdev *mipi_sd,
  	if (!csis_fmt) {
  		csis_fmt = &mipi_csis_formats[0];
  		mf->code = csis_fmt->code;
@@ -102,5 +102,5 @@ index 4d4896779753..2743fa685c3d 100644
  	return 0;
  }
 -- 
-2.17.1
+2.30.1
 

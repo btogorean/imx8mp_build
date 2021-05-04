@@ -227,7 +227,9 @@ apt install -y ${ADD_LIST_ST_3}
 #systemd configs
 systemctl enable systemd-networkd.service
 systemctl enable avahi-daemon.service
-systemctl enable usb-gadget.service
+systemctl enable usb-gadget-uvc.service
+systemctl enable uvc-gadget.service
+systemctl enable adi-tof.service
 
 EOF
 

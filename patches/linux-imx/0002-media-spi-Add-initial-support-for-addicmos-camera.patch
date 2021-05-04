@@ -1,22 +1,22 @@
-From c06ba5f70af5c78ddfcf4ce4b0980b1a5c409f5d Mon Sep 17 00:00:00 2001
+From 68136a92df0e4b3faa3f844ff1a6902bf688c364 Mon Sep 17 00:00:00 2001
 From: Bogdan Togorean <bogdan.togorean@analog.com>
 Date: Thu, 11 Mar 2021 11:26:52 +0200
-Subject: [PATCH 3/6] media: spi: Add initial support for addicmos camera
+Subject: [PATCH 2/7] media: spi: Add initial support for addicmos camera
 
 Signed-off-by: Bogdan Togorean <bogdan.togorean@analog.com>
 ---
  drivers/media/spi/Kconfig          |  15 +
  drivers/media/spi/Makefile         |   1 +
- drivers/media/spi/addicmos.c       | 925 +++++++++++++++++++++++++++++
+ drivers/media/spi/addicmos.c       | 931 +++++++++++++++++++++++++++++
  include/uapi/linux/v4l2-controls.h |   6 +
- 4 files changed, 947 insertions(+)
+ 4 files changed, 953 insertions(+)
  create mode 100644 drivers/media/spi/addicmos.c
 
 diff --git a/drivers/media/spi/Kconfig b/drivers/media/spi/Kconfig
-index bcc49cb47de6..0d3cc077f335 100644
+index 857ef4ace6e9..f54820bf92b4 100644
 --- a/drivers/media/spi/Kconfig
 +++ b/drivers/media/spi/Kconfig
-@@ -13,6 +13,21 @@ config VIDEO_GS1662
+@@ -15,6 +15,21 @@ config VIDEO_GS1662
  	help
  	  Enable the GS1662 driver which serializes video streams.
  
@@ -50,10 +50,10 @@ index 9f45787d680d..b705d2bfa814 100644
  
 diff --git a/drivers/media/spi/addicmos.c b/drivers/media/spi/addicmos.c
 new file mode 100644
-index 000000000000..a42563aeb96d
+index 000000000000..e6bbb45d8116
 --- /dev/null
 +++ b/drivers/media/spi/addicmos.c
-@@ -0,0 +1,925 @@
+@@ -0,0 +1,931 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Driver for the Analog Devices ADDICMOS ToF camera sensor.
@@ -110,7 +110,7 @@ index 000000000000..a42563aeb96d
 +	struct v4l2_ctrl *pixel_rate;
 +	struct v4l2_ctrl *link_freq;
 +	/* custom controls */
-+	struct v4l2_ctrl *set_operating_range;
++	struct v4l2_ctrl *operating_mode;
 +
 +	struct mutex lock;
 +	bool streaming;
@@ -206,22 +206,29 @@ index 000000000000..a42563aeb96d
 +static const s64 link_freq_tbl[] = {
 +	732000000,
 +	732000000,
++	732000000
 +};
 +
 +/* Elements of the structure must be ordered ascending by width & height */
 +static const struct addicmos_mode_info addicmos_mode_info_data[] = {
 +	{
-+		.width = 4096,
-+		.height = 256,
++		.width = 3840,
++		.height = 24,
 +		.pixel_rate = 488000000,
 +		.link_freq_idx = 0 /* an index in link_freq_tbl[] */
 +	},
 +	{
 +		.width = 4096,
-+		.height = 384,
++		.height = 64,
 +		.pixel_rate = 488000000,
 +		.link_freq_idx = 1 /* an index in link_freq_tbl[] */
 +	},
++	{
++		.width = 4096,
++		.height = 256,
++		.pixel_rate = 488000000,
++		.link_freq_idx = 2 /* an index in link_freq_tbl[] */
++	}
 +};
 +
 +static int addicmos_regmap_write(void *context, const void *data, size_t count)
@@ -287,7 +294,7 @@ index 000000000000..a42563aeb96d
 +	unsigned int read_val;
 +	int i, ret;
 +
-+	pr_err("Entered addicmos_power_on");
++	dev_dbg(addicmos->dev, "Entered addicmos_power_on\n");
 +
 +	ret = regmap_write(addicmos->regmap, 0xC, 0xC5);
 +	if (ret)
@@ -314,7 +321,7 @@ index 000000000000..a42563aeb96d
 +	unsigned int read_val;
 +	int i, ret;
 +
-+	pr_err("Entered addicmos_power_off\n");
++	dev_dbg(addicmos->dev, "Entered addicmos_power_off\n");
 +
 +	ret = regmap_write(addicmos->regmap, 0xC, 0x2);
 +	if (ret)
@@ -362,8 +369,6 @@ index 000000000000..a42563aeb96d
 +	struct addicmos *addicmos = container_of(ctrl->handler,
 +						 struct addicmos, ctrls);
 +	int ret = 0;
-+
-+pr_err("Entered addicmos_s_ctrl\n");
 +
 +	switch (ctrl->id) {
 +	case V4L2_CID_ADDICMOS_OPERATING_MODE:
@@ -569,11 +574,16 @@ index 000000000000..a42563aeb96d
 +
 +static int addicmos_start_streaming(struct addicmos *addicmos)
 +{
-+#if 0
-+	return regmap_multi_reg_write(addicmos->regmap,
-+			addicmos->fw_regs,
-+			addicmos->fw_regs_count);
-+#endif
++	unsigned int read_val;
++	int ret;
++
++	regmap_read(addicmos->regmap, 0x210, &read_val);
++	if (read_val != addicmos->curr_operating_mode) {
++		ret = regmap_write(addicmos->regmap, 0x200,
++				   addicmos->curr_operating_mode);
++		if (ret)
++			dev_err(addicmos->dev, "Could not set mode register\n");
++	}
 +	return 0;
 +}
 +
@@ -732,8 +742,8 @@ index 000000000000..a42563aeb96d
 +		return -EINVAL;
 +	}
 +
-+	__v4l2_ctrl_modify_range(addicmos->set_operating_range,
-+				 addicmos->set_operating_range->minimum,
++	__v4l2_ctrl_modify_range(addicmos->operating_mode,
++				 addicmos->operating_mode->minimum,
 +				 modes_nr - 1, 1, 0);
 +
 +	data_size_bytes = le32_to_cpu(fw_head->data_size_bytes);
@@ -761,8 +771,6 @@ index 000000000000..a42563aeb96d
 +{
 +	struct addicmos *addicmos = to_addicmos(sd);
 +	int ret;
-+
-+pr_err("Entered addicmos_mode_firmware_load\n");
 +
 +	ret = request_firmware(&addicmos->fw, FW_FILE_NAME, addicmos->dev);
 +	if (ret < 0) {
@@ -801,8 +809,6 @@ index 000000000000..a42563aeb96d
 +	struct fwnode_handle *endpoint;
 +	struct addicmos *addicmos;
 +	int ret;
-+
-+pr_err("Entered addicmos_probe\n");
 +
 +	addicmos = devm_kzalloc(dev, sizeof(struct addicmos), GFP_KERNEL);
 +	if (!addicmos)
@@ -878,7 +884,7 @@ index 000000000000..a42563aeb96d
 +	if (addicmos->link_freq)
 +		addicmos->link_freq->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 +
-+	addicmos->set_operating_range = v4l2_ctrl_new_custom(&addicmos->ctrls,
++	addicmos->operating_mode = v4l2_ctrl_new_custom(&addicmos->ctrls,
 +						&addicmos_ctrl_operating_mode,
 +						NULL);
 +
@@ -980,22 +986,22 @@ index 000000000000..a42563aeb96d
 +MODULE_AUTHOR("Bogdan Togorean");
 +MODULE_LICENSE("GPL v2");
 diff --git a/include/uapi/linux/v4l2-controls.h b/include/uapi/linux/v4l2-controls.h
-index a2669b79b294..7a7016391a42 100644
+index a184c4939438..21e3b433856a 100644
 --- a/include/uapi/linux/v4l2-controls.h
 +++ b/include/uapi/linux/v4l2-controls.h
-@@ -192,6 +192,12 @@ enum v4l2_colorfx {
-  * We reserve 16 controls for this driver. */
- #define V4L2_CID_USER_IMX_BASE			(V4L2_CID_USER_BASE + 0x10b0)
+@@ -198,6 +198,12 @@ enum v4l2_colorfx {
+  */
+ #define V4L2_CID_USER_ATMEL_ISC_BASE		(V4L2_CID_USER_BASE + 0x10c0)
  
 +/*
-+ * The base for the addicmos driver controls.
-+ * We reserve 16 controls for this driver.
-+ */
++* The base for the addicmos driver controls.
++* We reserve 16 controls for this driver.
++*/
 +#define V4L2_CID_USER_ADDICMOS_BASE		(V4L2_CID_USER_BASE + 0x10e0)
 +
  /* MPEG-class control IDs */
  /* The MPEG controls are applicable to all codec controls
   * and the 'MPEG' part of the define is historical */
 -- 
-2.17.1
+2.30.1
 

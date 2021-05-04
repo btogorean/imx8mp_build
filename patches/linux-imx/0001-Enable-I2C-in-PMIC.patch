@@ -1,39 +1,32 @@
-From 0fff9d9b04edc3980e6d8ebeec3606d396acf53f Mon Sep 17 00:00:00 2001
+From a13e75564ff3e8102ca3f36385fa0a663aa9b781 Mon Sep 17 00:00:00 2001
 From: Bogdan Togorean <bogdan.togorean@analog.com>
-Date: Thu, 11 Mar 2021 11:06:51 +0200
-Subject: [PATCH 1/6] Enable I2C in PMIC
+Date: Thu, 15 Apr 2021 11:26:07 +0300
+Subject: [PATCH 1/7] Enable I2C in PMIC
 
 Signed-off-by: TalPilo <tal.pilo@solid-run.com>
+Signed-off-by: Bogdan Togorean <bogdan.togorean@analog.com>
 ---
- drivers/mfd/pca9450.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ drivers/regulator/pca9450-regulator.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/drivers/mfd/pca9450.c b/drivers/mfd/pca9450.c
-index 1586852ce52d..7d132afa4d95 100644
---- a/drivers/mfd/pca9450.c
-+++ b/drivers/mfd/pca9450.c
-@@ -235,6 +235,13 @@ static int pca9450_i2c_probe(struct i2c_client *i2c,
- 			__func__);
- 		goto err;
+diff --git a/drivers/regulator/pca9450-regulator.c b/drivers/regulator/pca9450-regulator.c
+index 247de3e68d81..d0c74f896849 100644
+--- a/drivers/regulator/pca9450-regulator.c
++++ b/drivers/regulator/pca9450-regulator.c
+@@ -766,6 +766,13 @@ static int pca9450_i2c_probe(struct i2c_client *i2c,
+ 		return -EINVAL;
  	}
-+
-+	ret = pca9450_reg_write(pca9450, PCA9450_CONFIG2, 11);
+ 
++	ret = regmap_write(pca9450->regmap, PCA9450_REG_CONFIG2, 11);
 +	if (ret < 0) {
-+                dev_err(pca9450->dev, "%s(): write PCA9450_CONFIG2 failed!\n",
++                dev_err(pca9450->dev, "%s(): write PCA9450_REG_CONFIG2 failed!\n",
 +                        __func__);
-+                goto err;
++                return ret;
 +        }
- 	dev_info(pca9450->dev, "Device ID=0x%X\n", ret);
- 
- 	pca9450_irq_init(pca9450, of_pmic_plat_data);
-@@ -294,6 +301,7 @@ static int __init pca9450_i2c_init(void)
- /* init early so consumer devices can complete system boot */
- subsys_initcall(pca9450_i2c_init);
- 
 +
- static void __exit pca9450_i2c_exit(void)
- {
- 	i2c_del_driver(&pca9450_i2c_driver);
+ 	for (i = 0; i < pca9450->rcnt; i++) {
+ 		const struct regulator_desc *desc;
+ 		struct regulator_dev *rdev;
 -- 
-2.17.1
+2.30.1
 
