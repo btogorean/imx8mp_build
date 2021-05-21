@@ -1,8 +1,8 @@
-From c5906b16b890b0545b63ff5184f248e7241556c7 Mon Sep 17 00:00:00 2001
+From 6d451b194bca1fc2b8a653191889cd727167e9e2 Mon Sep 17 00:00:00 2001
 From: Bogdan Togorean <bogdan.togorean@analog.com>
 Date: Tue, 4 May 2021 10:20:23 +0300
-Subject: [PATCH] staging: media: imx: imx8-isi-cap : Fix for discarding of the
- first frame
+Subject: [PATCH 08/12] staging: media: imx: imx8-isi-cap : Fix for discarding
+ of the first frame
 
 Signed-off-by: Bogdan Togorean <bogdan.togorean@analog.com>
 ---
