@@ -1,16 +1,61 @@
-From ade19ec31b177c87ef87617dcbd421e0be299040 Mon Sep 17 00:00:00 2001
+From 3068e59bed762137069047ae4db2bd3bcacb5793 Mon Sep 17 00:00:00 2001
 From: Bogdan Togorean <bogdan.togorean@analog.com>
 Date: Fri, 16 Apr 2021 09:01:34 +0300
-Subject: [PATCH 06/12] usb: typec: tcpm: Remove tcpm port reset
+Subject: [PATCH 12/13] usb: typec: tcpm: Remove tcpm port reset
 
 This patch is required to prevent VBUS turning off by the HOST when PD negociation is happening
 
 Signed-off-by: Bogdan Togorean <bogdan.togorean@analog.com>
 ---
- drivers/usb/typec/tcpm/tcpm.c | 31 ++++++++++++-------------------
- include/linux/usb/pd.h        |  2 +-
- 2 files changed, 13 insertions(+), 20 deletions(-)
+ drivers/usb/typec/tcpm/tcpci.c | 19 +++++++++++--------
+ drivers/usb/typec/tcpm/tcpm.c  | 31 ++++++++++++-------------------
+ include/linux/usb/pd.h         |  2 +-
+ 3 files changed, 24 insertions(+), 28 deletions(-)
 
+diff --git a/drivers/usb/typec/tcpm/tcpci.c b/drivers/usb/typec/tcpm/tcpci.c
+index 93234ec601f0..686f66e70a5b 100644
+--- a/drivers/usb/typec/tcpm/tcpci.c
++++ b/drivers/usb/typec/tcpm/tcpci.c
+@@ -113,13 +113,15 @@ static int tcpci_start_toggling(struct tcpc_dev *tcpc,
+ {
+ 	int ret;
+ 	struct tcpci *tcpci = tcpc_to_tcpci(tcpc);
+-	unsigned int reg = TCPC_ROLE_CTRL_DRP;
+-
+-	/* Handle vendor drp toggling */
+-	if (tcpci->data->start_drp_toggling) {
+-		ret = tcpci->data->start_drp_toggling(tcpci, tcpci->data, cc);
+-		if (ret < 0)
+-			return ret;
++	unsigned int reg = 0;
++	if (port_type == TYPEC_PORT_DRP) {
++		/* Handle vendor drp toggling */
++		if (tcpci->data->start_drp_toggling) {
++			ret = tcpci->data->start_drp_toggling(tcpci, tcpci->data, cc);
++			if (ret < 0)
++				return ret;
++		}
++		reg = TCPC_ROLE_CTRL_DRP;
+ 	}
+ 
+ 	switch (cc) {
+@@ -368,6 +370,7 @@ static int tcpci_set_vbus(struct tcpc_dev *tcpc, bool source, bool sink)
+ 	struct tcpci *tcpci = tcpc_to_tcpci(tcpc);
+ 	int ret;
+ 
++#if 0
+ 	if (tcpci->data->set_vbus) {
+ 		ret = tcpci->data->set_vbus(tcpci, tcpci->data, source, sink);
+ 		/* Bypass when ret > 0 */
+@@ -407,7 +410,7 @@ static int tcpci_set_vbus(struct tcpc_dev *tcpc, bool source, bool sink)
+ 		if (ret < 0)
+ 			return ret;
+ 	}
+-
++#endif
+ 	return 0;
+ }
+ 
 diff --git a/drivers/usb/typec/tcpm/tcpm.c b/drivers/usb/typec/tcpm/tcpm.c
 index e49d8dbc2234..ef2bb525d90a 100644
 --- a/drivers/usb/typec/tcpm/tcpm.c
@@ -132,5 +177,5 @@ index 3a805e2ecbc9..c5184ef96769 100644
  #define PD_T_SRC_TRANSITION	35
  #define PD_T_DRP_SNK		40
 -- 
-2.30.1
+2.32.0
 
